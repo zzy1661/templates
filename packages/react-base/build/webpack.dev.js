@@ -17,19 +17,24 @@ const defaultConfig = env => {
 			target: 'web',
 			cache: {
 				type: 'filesystem',
-				// 不同环境的缓存需要区分开
-				cacheDirectory: path.resolve(__dirname,'../', 'node_modules/.cache/webpack/local')
+					// 不同环境的缓存需要区分开
+					cacheDirectory: path.resolve(__dirname,'../', 'node_modules/.cache/webpack/dev'),
+				store: 'pack',
+				buildDependencies: {
+				  defaultWebpack: ['webpack/lib/'],
+				  config: [__filename],
+				},
 			},
 			entry: {
 				bundle: path.join(__dirname,'../', 'src', 'index.tsx')
 			},
 			output: {
-				path: path.join(__dirname,'../', 'dev'),
-				filename: '[name].[contenthash:8].js',
-				sourceMapFilename: '[name].[contenthash:8].map'
+				pathInfo:true,
+				devtoolModuleFilenameTemplate:  (info => path.resolve(info.absoluteResourcePath).replace(/\\/g, '/')) ,
 			},
 
 			optimization: {
+				minimize: false,
 				moduleIds: 'named',
 				splitChunks: {
 					chunks: 'all', // initial、async和all
@@ -41,7 +46,7 @@ const defaultConfig = env => {
 					cacheGroups: {
 						defaultVendors: {
 							chunks: 'all',
-							test: /(react|react-dom|react-dom-router|core-js|mobx)/,
+							test: /(react|react-dom|react-dom-router|core-js)/,
 							priority: 100,
 							name: 'vendors'
 						},
@@ -69,6 +74,16 @@ const defaultConfig = env => {
 					}
 				},
 			},
+			module:{
+				rules:[
+					{
+						enforce: 'pre',
+						exclude: /@babel(?:\/|\\{1,2})runtime/,
+						test: /\.(js|mjs|jsx|ts|tsx|css)$/,
+						loader: require.resolve('source-map-loader'),
+					  },
+				]
+			},
 			plugins: [
 				new MiniCssExtractPlugin({
 					ignoreOrder: true,
@@ -87,10 +102,46 @@ const defaultConfig = env => {
 					env: 'development',
 				}),
 				new ForkTsCheckerWebpackPlugin({
-					// eslint: {files: '**/*.{ts,tsx}'}
+					eslint: {files: '**/*.{ts,tsx}'},
+					async: true,
+					typescript: {
+					  typescriptPath: resolve.sync('typescript', {
+						basedir: './src',
+					  }),
+					  configOverwrite: {
+						compilerOptions: {
+						  sourceMap: true,
+						  skipLibCheck: true,
+						  inlineSourceMap: false,
+						  declarationMap: false,
+						  noEmit: true,
+						  incremental: true,
+						},
+					  },
+					  context: './',
+					  diagnosticOptions: {
+						syntactic: true,
+					  },
+					  mode: 'write-references',
+					},
+					issue: {
+					  include: [
+						{ file: '../**/src/**/*.{ts,tsx}' },
+						{ file: '**/src/**/*.{ts,tsx}' },
+					  ],
+					  exclude: [
+						{ file: '**/src/**/__tests__/**' },
+						{ file: '**/src/**/?(*.){spec|test}.*' },
+						{ file: '**/src/setupProxy.*' },
+						{ file: '**/src/setupTests.*' },
+					  ],
+					},
+					// logger: {
+					//   infrastructure: 'silent',
+					// },
 				})
 			],
-			devtool: 'eval-source-map',
+			devtool: 'cheap-module-source-map',
 			stats: 'errors-only'
 		}
 	]);

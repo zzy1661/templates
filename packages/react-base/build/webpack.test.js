@@ -5,37 +5,66 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
 const OptimizeCSSAssetsPlugin = require('css-minimizer-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const config = require(path.join('../', 'opsrc.js'));
 
 const pkg = require(path.join('../', 'package.json'));
 // let BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 const defaultConfig = env => {
-	const {app} = config;
 	return merge([
 		require('./webpack.base')(env),
 		{
 			mode: 'development',
 			cache: {
 				type: 'filesystem',
-				cacheDirectory: path.resolve('../', 'node_modules/.cache/webpack/dev')
+				cacheDirectory: path.resolve('../', 'node_modules/.cache/webpack/build'),
+				store: 'pack',
+				buildDependencies: {
+				  defaultWebpack: ['webpack/lib/'],
+				  config: [__filename],
+				},
 			},
 			entry: {
 				bundle: path.join('../', 'src', 'index.tsx')
 			},
 			output: {
-				path: path.join('../', 'dist'),
-				filename: `[name].[chunkhash:8].js`,
-				chunkFilename: `[name].[chunkhash:8].js`
+			
+				devtoolModuleFilenameTemplate:info =>
+				path
+				  .relative(path.resolve(__dirname, '../src'), info.absoluteResourcePath)
+				  .replace(/\\/g, '/')
 			},
 			optimization: {
+				minimize: true,
 				moduleIds: 'deterministic',
 				minimizer: [
 					new TerserPlugin({
-						parallel: true
+					  terserOptions: {
+						parse: {
+						
+						  ecma: 8,
+						},
+						compress: {
+						  ecma: 5,
+						  warnings: false,
+						
+						  comparisons: false,
+						  
+						},
+						mangle: {
+						  safari10: true,
+						},
+						keep_classnames: isEnvProductionProfile,
+						keep_fnames: isEnvProductionProfile,
+						output: {
+						  ecma: 5,
+						  comments: false,
+						
+						  ascii_only: true,
+						},
+					  },
 					}),
-					new OptimizeCSSAssetsPlugin({})
-				],
+					new CssMinimizerPlugin(),
+				  ],
 				splitChunks: {
 					chunks: 'all', // initial、async和all
 					minSize: 30000, // 形成一个新代码块最小的体积
@@ -45,7 +74,7 @@ const defaultConfig = env => {
 					cacheGroups: {
 						defaultVendors: {
 							chunks: 'all',
-							test: /(react|react-dom|react-dom-router|core-js|mobx)/,
+							test: /(react|react-dom|react-dom-router|core-js)/,
 							priority: 100,
 							name: 'vendors'
 						},
@@ -62,10 +91,10 @@ const defaultConfig = env => {
 				// new BundleAnalyzerPlugin({
 				// 	analyzerPort: 8888
 				// }),
-
+				
 				new MiniCssExtractPlugin({
 					filename: `[name].[contenthash:8].css`,
-					chunkFilename: `[name].[contenthash:8].css`
+					chunkFilename: `[name].[contenthash:8].chunk.css`
 				}),
 				new HtmlWebpackPlugin({
 					title: 'Hello（开发）',

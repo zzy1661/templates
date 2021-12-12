@@ -16,31 +16,50 @@ const defaultConfig = env => {
 		require('./webpack.base')(env),
 		{
 			mode: 'production',
+			bail:true,
 			entry: {
 				bundle: path.join(__dirname,'../' ,'src', 'index.tsx')
 			},
 
 			output: {
-				path: path.join(__dirname,'../' ,'dist'),
-				filename: `[name].[chunkhash:8].js`,
-				chunkFilename: `[name].[chunkhash:8].js`
+			
+				devtoolModuleFilenameTemplate:info =>
+				path
+				  .relative(path.resolve(__dirname, '../src'), info.absoluteResourcePath)
+				  .replace(/\\/g, '/')
 			},
 			optimization: {
+				minimize: true,
 				moduleIds: 'deterministic',
 				minimizer: [
 					new TerserPlugin({
-						parallel: true,
-						terserOptions: {
-							mangle: {
-								safari10: true
-							},
-							output: {
-								comments: false
-							}
-						}
+					  terserOptions: {
+						parse: {
+						
+						  ecma: 8,
+						},
+						compress: {
+						  ecma: 5,
+						  warnings: false,
+						
+						  comparisons: false,
+						  
+						},
+						mangle: {
+						  safari10: true,
+						},
+						keep_classnames: isEnvProductionProfile,
+						keep_fnames: isEnvProductionProfile,
+						output: {
+						  ecma: 5,
+						  comments: false,
+						
+						  ascii_only: true,
+						},
+					  },
 					}),
-					new CssMinimizerPlugin()
-				],
+					new CssMinimizerPlugin(),
+				  ],
 				splitChunks: {
 					chunks: 'all', // initial、async和all
 					minSize: 30000, // 形成一个新代码块最小的体积
@@ -50,7 +69,7 @@ const defaultConfig = env => {
 					cacheGroups: {
 						defaultVendors: {
 							chunks: 'all',
-							test: /(react|react-dom|react-dom-router|core-js|mobx)/,
+							test: /(react|react-dom|react-dom-router|core-js)/,
 							priority: 100,
 							name: 'vendors'
 						},
@@ -68,7 +87,7 @@ const defaultConfig = env => {
 				new MiniCssExtractPlugin({
 					ignoreOrder: true,
 					filename: `[name].[contenthash:8].css`,
-					chunkFilename: `[name].[contenthash:8].css`
+					chunkFilename: `[name].[contenthash:8].chunk.css`
 				}),
 
 				new HtmlWebpackPlugin({

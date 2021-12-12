@@ -6,148 +6,337 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const {WebpackManifestPlugin} = require('webpack-manifest-plugin');
 const webpack = require('webpack');
 const CopyPlugin = require('copy-webpack-plugin');
+// const requireDir = require('require-dir');
+// const fs = require('fs-extra')
+const plugins = [];
+const glob = require('glob');
+const {fstat} = require('fs');
 
+let htmlPlugins = [];
+let entries = glob.sync('./src/index*.tsx').reduce((pre, file) => {
+	let name = file.match(/index(\S{0,})\.tsx/)?.[1] || 'index';
+	pre[name] = path.resolve(file);
+	let html = glob.sync(`./public/${name}.+(html|ejs)`);
+	htmlPlugins.push(
+		new HtmlWebpackPlugin(
+			Object.assign(
+				{},
+				{
+					inject: true,
+					template: html,
+					title: 'Hello' + (process.env.NODE_ENV === 'production' ? '开发' : ''),
+					hash: false,
+					chunks: [name, 'vendors'],
+					version: '1.0.0',
+					env: process.env.NODE_ENV
+				},
+				process.env.NODE_ENV === 'production'
+					? {
+							minify: {
+								removeComments: true,
+								collapseWhitespace: true,
+								removeRedundantAttributes: true,
+								useShortDoctype: true,
+								removeEmptyAttributes: true,
+								removeStyleLinkTypeAttributes: true,
+								keepClosingSlash: true,
+								minifyJS: true,
+								minifyCSS: true,
+								minifyURLs: true
+							}
+					  }
+					: undefined
+			)
+		)
+	);
+	return pre;
+}, {});
 
-const alias = {
-	'@': path.resolve(__dirname, '../src')
+const getStyleLoaders = (cssOptions, preProcessor) => {
+	const loaders = [
+		{
+			loader: MiniCssExtractPlugin.loader
+		},
+		{
+			loader: require.resolve('css-loader'),
+			options: cssOptions
+		},
+		{
+			loader: require.resolve('postcss-loader'),
+			options: {
+				postcssOptions: {
+					ident: 'postcss',
+					plugins: [
+						'postcss-flexbugs-fixes',
+						[
+							'postcss-preset-env',
+							{
+								autoprefixer: {
+									flexbox: 'no-2009'
+								},
+								stage: 3
+							}
+						],
+
+						'postcss-normalize'
+					]
+				},
+				sourceMap: true
+			}
+		}
+	];
+	if (preProcessor) {
+		loaders.push(
+			{
+				loader: require.resolve('resolve-url-loader'),
+				options: {
+					sourceMap: true,
+					root: path.join(__dirname, '../src')
+				}
+			},
+			{
+				loader: require.resolve(preProcessor),
+				options: {
+					sourceMap: true
+				}
+			}
+		);
+	}
+	return loaders;
 };
-
-
 module.exports = env => {
-	let cusEnv = {};
-
 	return {
+		target: ['browserslist'],
+		entry: entries,
+		output: {
+			path: path.join(__dirname, '../', 'dist'),
+			filename: `[name].[contenthash:8].js`,
+			chunkFilename: `[name].[contenthash:8].chunk.js`,
+			assetModuleFilename: 'assets/media/[name].[hash][ext]',
+			publicPath: '/'
+		},
+		// infrastructureLogging: {
+		// 	level: 'none',
+		//   },
 		resolve: {
+			modules: ['node_modules'],
 			extensions: ['.ts', '.tsx', '.js', '.json'],
-			alias
+			alias: {
+				'@': path.resolve(__dirname, '../src')
+			}
 		},
 		module: {
+			parser: {
+				javascript: {
+					exportsPresence: 'error'
+				}
+			},
 			rules: [
 				{
-					test: /\.js?$/,
-					exclude: /node_modules/,
-					use: [
+					oneOf: [
 						{
-							loader: 'babel-loader',
-							options: {
-								babelrc: true
-							}
-						}
-					]
-				},
-				{
-					test: /\.jsx?$/,
-					exclude: /node_modules/,
-					use: [
-						{
-							loader: 'babel-loader',
-							options: {
-								babelrc: true
-							}
-						}
-					]
-				},
-				{
-					test: /\.tsx?$/,
-					exclude: /node_modules/,
-					use: [
-						{
-							loader: 'babel-loader',
-							options: {
-								presets: ['@babel/preset-env', '@babel/preset-react', '@babel/preset-typescript']
-							}
-						}
-					]
-				},
-				{
-					test: /\.css/,
-					exclude: /(src)/,
-					use: [
-						MiniCssExtractPlugin.loader,
-						{
-							loader: 'css-loader'
-						}
-					]
-				},
-				{
-					test: /\.less/,
-					include: /(antd)|(antd-mobile)|(ictd-mobile)/,
-					use: [
-						MiniCssExtractPlugin.loader,
-						{
-							loader: 'css-loader'
-						},
-						{
-							loader: 'postcss-loader'
-						},
-						{
-							loader: 'less-loader',
-							options: {
-								lessOptions: {
-									javascriptEnabled: true
+							test: /\.(png|jpe?g|gif|eot|woff|woff2|ttf)(\?.*)?$/,
+							exclude: /(antd)|(antd-mobile)/,
+							type: 'asset',
+							parser: {
+								dataUrlCondition: {
+									maxSize: 10 * 1024 // 10kb
 								}
 							}
-						}
-					]
-					// use style-loader in development
-				},
-				{
-					test: /\.less/,
-					exclude: /(antd)|(antd-mobile)|(ictd-mobile)/,
-					use: [
+						},
 						{
-							loader: MiniCssExtractPlugin.loader,
-							options: {
-								publicPath: '/'
+							test: /\.svg$/,
+							use: [
+								{
+									loader: require.resolve('@svgr/webpack'),
+									options: {
+										prettier: false,
+										svgo: false,
+										svgoConfig: {
+											plugins: [{removeViewBox: false}]
+										},
+										titleProp: true,
+										ref: true
+									}
+								},
+								{
+									loader: require.resolve('file-loader'),
+									options: {
+										name: 'assets/media/[name].[hash].[ext]'
+									}
+								}
+							],
+							issuer: {
+								and: [/\.(ts|tsx|js|jsx|md|mdx)$/]
 							}
+						},
+						{
+							test: /\.js?$/,
+							exclude: /node_modules/,
+							use: [
+								{
+									loader: 'babel-loader',
+									options: {
+										babelrc: true
+									}
+								}
+							]
+						},
+						{
+							test: /\.(js|mjs|jsx|ts|tsx)$/,
+							exclude: /node_modules/,
+							loader: require.resolve('babel-loader'),
+							options: {
+								babelrc: true
+							}
+						},
+						{
+							test: /\.(js|mjs)$/,
+							exclude: /@babel(?:\/|\\{1,2})runtime/,
+							loader: require.resolve('babel-loader'),
+							options: {
+								babelrc: false,
+								configFile: false,
+								compact: false,
+								presets: [
+									[
+										'@babel/preset-env',
+										{
+											useBuiltIns: 'entry',
+											corejs: 3,
+											exclude: ['transform-typeof-symbol']
+										}
+									]
+								],
+								plugins: ['@babel/plugin-transform-runtime'],
+								cacheDirectory: true,
+								cacheCompression: false,
+								sourceMaps: true,
+								inputSourceMap: true
+							}
+						},
+						{
+							test: /\.css$/,
+							exclude: /\.module\.css$/,
+							use: getStyleLoaders({
+								importLoaders: 1,
+								sourceMap: true,
+								modules: {
+									mode: 'icss',
+									localIdentName: '[name]_[local]_[hash:base64:5]'
+								}
+							}),
+							sideEffects: true
 						},
 
 						{
-							loader: 'css-loader',
-							options: {
+							test: /\.module\.css$/,
+							use: getStyleLoaders({
+								importLoaders: 1,
+								sourceMap: true,
 								modules: {
-									localIdentName: '[name]_[local]_[hash:base64:5]'
-								},
-								importLoaders: 2
-							}
-						},
-						{
-							loader: 'postcss-loader'
-						},
-						{
-							loader: 'less-loader',
-							options: {
-								lessOptions: {
-									javascriptEnabled: true
+									mode: 'local',
+									localIdentName: '[name]_[local]_m_[hash:base64:5]'
 								}
-							}
+							})
+						},
+
+						{
+							test: /\.(scss|sass)$/,
+							exclude: /\.module\.(scss|sass)$/,
+							use: getStyleLoaders(
+								{
+									importLoaders: 3,
+									sourceMap: true,
+									modules: {
+										mode: 'icss'
+									}
+								},
+								'sass-loader'
+							),
+							sideEffects: true
+						},
+						{
+							test: /\.module\.(scss|sass)$/,
+							use: getStyleLoaders(
+								{
+									importLoaders: 3,
+									sourceMap: true,
+									modules: {
+										mode: 'local',
+										localIdentName: '[name]_[local]_m_[hash:base64:5]'
+									}
+								},
+								'sass-loader'
+							)
+						},
+						{
+							test: /\.(less)$/,
+							exclude: /\.module\.(less)$/,
+							use: getStyleLoaders(
+								{
+									importLoaders: 3,
+									sourceMap: true,
+									modules: {
+										mode: 'icss'
+									}
+								},
+								'less-loader'
+							),
+							sideEffects: true
+						},
+						{
+							test: /\.module\.(less)$/,
+							use: getStyleLoaders(
+								{
+									importLoaders: 3,
+									sourceMap: true,
+									modules: {
+										mode: 'local',
+										localIdentName: '[name]_[local]_m_[hash:base64:5]'
+									}
+								},
+								'less-loader'
+							)
+						},
+						{
+							exclude: [/^$/, /\.(js|mjs|jsx|ts|tsx)$/, /\.html$/, /\.json$/],
+							type: 'asset/resource'
 						}
 					]
-				},
-				{
-					test: /\.(png|jpe?g|gif|svg|eot|woff|woff2|ttf)(\?.*)?$/,
-					exclude: /(antd)|(antd-mobile)/,
-					type: 'asset',
-					parser: {
-						dataUrlCondition: {
-							maxSize: 10 * 1024 // 10kb
-						}
-					},
-					generator: {
-						filename: `/assets/img/[name].[hash:7].[ext]` //'static/[hash][ext][query]'
-					}
 				}
 			]
 		},
 		plugins: [
-			new WebpackManifestPlugin(),
+			...htmlPlugins,
+			new CaseSensitivePathsPlugin(),
+			new WebpackManifestPlugin({
+				fileName: 'asset-manifest.json',
+				publicPath: '/',
+				generate: (seed, files, entrypoints) => {
+					const manifestFiles = files.reduce((manifest, file) => {
+						manifest[file.name] = file.path;
+						return manifest;
+					}, seed);
+					const entrypointFiles = entrypoints.main.filter(fileName => !fileName.endsWith('.map'));
+
+					return {
+						files: manifestFiles,
+						entrypoints: entrypointFiles
+					};
+				}
+			}),
 			new webpack.DefinePlugin({
-				AppRuntimeEnv: JSON.stringify(env.runtime || 'local'),
-				...cusEnv
+				AppRuntimeEnv: JSON.stringify(env.runtime || 'local')
+			}),
+			new webpack.IgnorePlugin({
+				resourceRegExp: /^\.\/locale$/,
+				contextRegExp: /moment$/
 			}),
 			new CopyPlugin({
 				patterns: [{from: 'public', to: '', filter: file => !/(\.ejs$)|(\.xml$)|(\.html$)/.test(file)}]
 			})
-		]
+		],
+		performance: true
 	};
 };
