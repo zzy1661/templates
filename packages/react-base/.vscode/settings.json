@@ -1,0 +1,34 @@
+{
+	"editor.tabSize": 4,
+	"editor.formatOnSave": true,
+	"files.autoSave": "afterDelay",
+	"files.autoSaveDelay": 60000000,
+	"editor.wordWrap": "on",
+	"editor.wordWrapColumn": 120,
+	"editor.wrappingIndent": "indent",
+	"html.format.wrapAttributes": "force",
+	"javascript.preferences.quoteStyle": "single",
+	"javascript.format.insertSpaceAfterOpeningAndBeforeClosingJsxExpressionBraces": true,
+	"javascript.format.insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces": true,
+	"typescript.preferences.quoteStyle": "single",
+	"typescript.format.insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces": true,
+	"typescript.tsdk": "node_modules\\typescript\\lib",
+	"eslint.options": {
+		"extensions": [
+			".js",
+			".tsx",
+			".ts"
+		]
+	},
+	"eslint.run": "onSave",
+	"eslint.validate": [
+		"javascript",
+		"javascriptreact",
+		"typescript",
+		"typescriptreact"
+	],
+	"tslint.enable": false,
+	"editor.codeActionsOnSave": {
+		"source.fixAll.eslint": true
+	}
+}

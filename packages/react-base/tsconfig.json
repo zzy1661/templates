@@ -1,0 +1,33 @@
+{
+	"compilerOptions": {
+		"experimentalDecorators": true,
+		"target": "es5",
+		"lib": [
+			"dom",
+			"dom.iterable",
+			"esnext"
+		],
+		"allowJs": true,
+		"skipLibCheck": true,
+		"esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
+		"strict": false,
+		"forceConsistentCasingInFileNames": true,
+		"module": "esnext",
+		"moduleResolution": "node",
+		"resolveJsonModule": true,
+		"isolatedModules": false,
+		"noImplicitAny": false,
+		"noEmit": true,
+		"jsx": "react-jsx",
+		"baseUrl": "packages/react-base/src",
+		"paths": {
+			"@/*": [
+				"./*"
+			]
+		}
+	},
+	"exclude": [
+		"node_modules"
+	]
+}
