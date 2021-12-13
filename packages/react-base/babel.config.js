@@ -1,5 +1,5 @@
 module.exports = function (api) {
-	// api.cache(false);
+	api.cache(true);
 	const presets = [
 		['@babel/preset-typescript'],
 		['@babel/preset-react'],
@@ -13,14 +13,10 @@ module.exports = function (api) {
 		]
 	];
 	const plugins = [
-
-
 		'@babel/plugin-syntax-dynamic-import',
 		'@babel/plugin-syntax-import-meta'
 	];
 	return {
-		cacheDirectory: true,
-		cacheCompression: false,
 		compact: process.env.NODE_ENV === 'production',
 		presets,
 		plugins

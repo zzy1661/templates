@@ -6,106 +6,12 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const {WebpackManifestPlugin} = require('webpack-manifest-plugin');
 const webpack = require('webpack');
 const CopyPlugin = require('copy-webpack-plugin');
-// const requireDir = require('require-dir');
-// const fs = require('fs-extra')
-const plugins = [];
 const glob = require('glob');
-const {fstat} = require('fs');
 
-let htmlPlugins = [];
-let entries = glob.sync('./src/index*.tsx').reduce((pre, file) => {
-	let name = file.match(/index(\S{0,})\.tsx/)?.[1] || 'index';
-	pre[name] = path.resolve(file);
-	let html = glob.sync(`./public/${name}.+(html|ejs)`);
-	htmlPlugins.push(
-		new HtmlWebpackPlugin(
-			Object.assign(
-				{},
-				{
-					inject: true,
-					template: html,
-					title: 'Hello' + (process.env.NODE_ENV === 'production' ? '开发' : ''),
-					hash: false,
-					chunks: [name, 'vendors'],
-					version: '1.0.0',
-					env: process.env.NODE_ENV
-				},
-				process.env.NODE_ENV === 'production'
-					? {
-							minify: {
-								removeComments: true,
-								collapseWhitespace: true,
-								removeRedundantAttributes: true,
-								useShortDoctype: true,
-								removeEmptyAttributes: true,
-								removeStyleLinkTypeAttributes: true,
-								keepClosingSlash: true,
-								minifyJS: true,
-								minifyCSS: true,
-								minifyURLs: true
-							}
-					  }
-					: undefined
-			)
-		)
-	);
-	return pre;
-}, {});
 
-const getStyleLoaders = (cssOptions, preProcessor) => {
-	const loaders = [
-		{
-			loader: MiniCssExtractPlugin.loader
-		},
-		{
-			loader: require.resolve('css-loader'),
-			options: cssOptions
-		},
-		{
-			loader: require.resolve('postcss-loader'),
-			options: {
-				postcssOptions: {
-					ident: 'postcss',
-					plugins: [
-						'postcss-flexbugs-fixes',
-						[
-							'postcss-preset-env',
-							{
-								autoprefixer: {
-									flexbox: 'no-2009'
-								},
-								stage: 3
-							}
-						],
 
-						'postcss-normalize'
-					]
-				},
-				sourceMap: true
-			}
-		}
-	];
-	if (preProcessor) {
-		loaders.push(
-			{
-				loader: require.resolve('resolve-url-loader'),
-				options: {
-					sourceMap: true,
-					root: path.join(__dirname, '../src')
-				}
-			},
-			{
-				loader: require.resolve(preProcessor),
-				options: {
-					sourceMap: true
-				}
-			}
-		);
-	}
-	return loaders;
-};
 module.exports = env => {
-	return {
+ 	return {
 		target: ['browserslist'],
 		entry: entries,
 		output: {

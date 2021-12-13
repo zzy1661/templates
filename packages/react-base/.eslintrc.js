@@ -24,6 +24,7 @@ module.exports = {
 		{
 			files: ['*.ts', '*.tsx'],
 			rules: {
+				"@typescript-eslint/no-explicit-any":0,
 				// 禁止使用@ts-ignore等
 				'@typescript-eslint/ban-ts-comment': 0,
 				// 禁止使用'!'
