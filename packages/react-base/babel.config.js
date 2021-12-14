@@ -6,7 +6,7 @@ module.exports = function (api) {
 		[
 			'@babel/preset-env',
 			{
-				modules: 'commonjs',
+				// modules: 'commonjs',
 				useBuiltIns: 'entry', //使用usage，不转换react中的Set，导致部分老手机（荣耀6）白屏
 				corejs: '3'
 			}

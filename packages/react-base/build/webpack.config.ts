@@ -1,7 +1,7 @@
 import path from 'path';
 
 import { WebpackManifestPlugin } from 'webpack-manifest-plugin';
-import webpack from 'webpack';
+import webpack, { DefinePlugin, IgnorePlugin } from 'webpack';
 import CopyPlugin from 'copy-webpack-plugin'
 import { getEntries, getHtmlPlugins } from './utils/multiPageHelper'
 import { getStyleRules } from './utils/getStyleRules'
@@ -128,46 +128,55 @@ module.exports = env => {
                             }
                         },
                         ...getStyleRules(),
-                        {
-                            exclude: [/^$/, /\.(js|mjs|jsx|ts|tsx)$/, /\.html$/, /\.json$/],
-                            type: 'asset/resource'
-                        }
+                        // {
+                        //     exclude: [/^$/, /\.(js|mjs|jsx|ts|tsx)$/, /\.html$/, /\.json$/],
+                        //     type: 'asset/resource'
+                        // }
                     ]
                 }
             ]
         },
-        plugins: [
-            ...getHtmlPlugins(),
-            new CaseSensitivePathsPlugin(),
-            new WebpackManifestPlugin({
-                fileName: 'asset-manifest.json',
-                publicPath: '/',
-                generate: (seed, files, entrypoints) => {
-                    const manifestFiles = files.reduce((manifest, file) => {
-                        manifest[file.name] = file.path;
-                        return manifest;
-                    }, seed);
-                    const entrypointFiles = entrypoints.main.filter(fileName => !fileName.endsWith('.map'));
-
-                    return {
-                        files: manifestFiles,
-                        entrypoints: entrypointFiles
-                    } as any;
-                }
-            }),
-            new webpack.DefinePlugin({
-                AppRuntimeEnv: JSON.stringify(env.runtime || 'local')
-            }),
-            new webpack.IgnorePlugin({
-                resourceRegExp: /^\.\/locale$/,
-                contextRegExp: /moment$/
-            }),
-            new CopyPlugin({
-                patterns: [{ from: 'public', to: '', filter: file => !/(\.ejs$)|(\.xml$)|(\.html$)/.test(file) }]
-            })
-        ],
+   
         // performance: true
     };
+    const plugins:Record<string,any[]> = {
+            ...getHtmlPlugins(),
+            CaseSensitivePathsPlugin:[CaseSensitivePathsPlugin],
+            WebpackManifestPlugin:[WebpackManifestPlugin,{
+                fileName: 'asset-manifest.json',
+                publicPath: '/',
+                // generate: (seed, files, entrypoints) => {
+                //     const manifestFiles = files.reduce((manifest, file) => {
+                //         manifest[file.name] = file.path;
+                //         return manifest;
+                //     }, seed);
+                //     const entrypointFiles = entrypoints.main.filter(fileName => !fileName.endsWith('.map'));
+
+                //     return {
+                //         files: manifestFiles,
+                //         entrypoints: entrypointFiles
+                //     } as any;
+                // }
+            } as  ConstructorParameters<typeof WebpackManifestPlugin>[0]] ,
+            DefinePlugin: [  webpack.DefinePlugin,
+                 {
+                    AppRuntimeEnv: JSON.stringify(env.runtime || 'local')
+                } as  ConstructorParameters<typeof DefinePlugin>[0]]
+              
+            ,
+            IgnorePlugin:
+             [  webpack.IgnorePlugin,
+              {
+                    resourceRegExp: /^\.\/locale$/,
+                    contextRegExp: /moment$/
+                } as ConstructorParameters<typeof IgnorePlugin>[0]]
+           ,
+            CopyPlugin: 
+             [  CopyPlugin,
+               {
+                    patterns: [{ from: 'public', to: '', filter: file => !/(\.ejs$)|(\.xml$)|(\.html$)/.test(file) }]
+                } as CopyPlugin.CopyPluginOptions]
+    }
     const chain = new webpackChain();
     
     chain.merge(defaultConfig);
@@ -367,14 +376,11 @@ module.exports = env => {
             devtool: 'source-map'
         })
     })
-   defaultConfig.plugins.forEach((plugin,index)=>{
-       //@ts-ignore
-       let pluginClass = plugin?.__proto__?.constructor;
-        console.log(pluginClass.name,plugin)
-    //    chain.plugin(pluginClass.name||'Plugin'+index).use(pluginClass)
-   })
+    Object.keys(plugins).forEach(name=>{
+        let p = chain.plugin(name)
+        p.use.call(p,plugins[name][0],[plugins[name][1]])
+    })
     let chainConfig =  chain.toConfig();
-    console.log(chainConfig)
-    process.exit(0)
     return chainConfig;
 };
+
